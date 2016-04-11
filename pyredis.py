@@ -27,17 +27,23 @@ class RedisClient:
             self.params.append(m.group(1))
             self.consume(3 + len(m.group(1)))
 
+        return m != None
+
     def infoHandler(self, data, length):
         m = re.match(r"\+(.*?)\r\n", data)
         if m != None:
             self.params.append(m.group(1))
             self.consume(3 + len(m.group(1)))
 
+        return m != None
+
     def errHandler(self, data, length):
         m = re.match(r"\-(.*?)\r\n", data)
         if m != None:
             self.params.append(m.group(1))
             self.consume(3 + len(m.group(1)))
+
+        return m != None
 
     def mbulkHandler(self, data, length):
         if self.mbulk != 0:
@@ -51,6 +57,8 @@ class RedisClient:
                 self.reset()
 
             self.consume(3 + len(m.group(1)))
+
+        return m != None
 
     def paramlenHandler(self, data, length):
         m = re.match(r"\$(\d+?)\r\n", data)
@@ -68,6 +76,8 @@ class RedisClient:
                 self.reset()
                 self.consume(4 + len(m.group(1)))
 
+        return m != None
+
     def paramHandler(self, data, length):
         m = re.match(r"(\w+?)\r\n", data)
 
@@ -78,6 +88,8 @@ class RedisClient:
             self.params.append(m.group(1))
             self.consume(2 + len(m.group(1)))
             self.paramLen = 0
+
+        return m != None
 
     def onDisconnect(self):
         try:
@@ -113,7 +125,6 @@ class RedisClient:
                 raise
                 
         self.socket.setblocking(False)
-        #print("connect to " + ip + ":" + str(port))
 
     def send(self, msg):
         total = 0
@@ -134,7 +145,8 @@ class RedisClient:
 
         recved = 0
         try:
-            recved = self.socket.recv_into(self.recvbuf, len(self.recvbuf) - self.recvbytes)
+            mv = memoryview(self.recvbuf)
+            recved = self.socket.recv_into(mv[self.recvbytes:], len(self.recvbuf) - self.recvbytes)
         except socket.error as serr:
             if serr.errno == errno.EAGAIN:
                 return 0
@@ -174,7 +186,8 @@ class RedisClient:
             if not handler:
                 raise RuntimeError("error protocol")
 
-            handler(data, length)
+            if not handler(data, length):
+                return False
         else:
             # process param string
             self.paramHandler(data, length)
@@ -232,6 +245,7 @@ if __name__ == '__main__':
     sock.connect(ip, port)
 
     while True:
+
         if not sock.isConnect():
             sock.connect(ip, port)
 
@@ -249,7 +263,8 @@ if __name__ == '__main__':
         sock.send(request + "\r\n")
 
         while not sock.update():
-            if sock.recv() < 0:
+            ret = sock.recv()
+            if ret < 0:
                 print("not connected\n")
                 break
 
