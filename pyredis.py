@@ -79,7 +79,7 @@ class RedisClient:
         return m != None
 
     def paramHandler(self, data, length):
-        m = re.match(r"(\w+?)\r\n", data)
+        m = re.match(r"(.+?)\r\n", data)
 
         if m != None:
             if self.paramLen != len(m.group(1)):
@@ -140,8 +140,8 @@ class RedisClient:
 
     # private
     def recv(self):
-        if len(self.recvbuf) < self.recvbytes + 32:
-            self.recvbuf.extend('\0' * (self.recvbytes + 32 - len(self.recvbuf)))
+        if len(self.recvbuf) < self.recvbytes + 128:
+            self.recvbuf.extend('\0' * (self.recvbytes + 128 - len(self.recvbuf)))
 
         recved = 0
         try:
