@@ -1,0 +1,13 @@
+[2016-06-25 17:12:11,346](ioloop.py:20)DEBUG: IOLoop __init__
+[2016-06-25 17:12:11,346](kqueue.py:85)INFO: INIT platform KqueueIOLoop
+[2016-06-25 17:12:11,347](ioloop.py:88)DEBUG: register 5 event 2
+[2016-06-25 17:12:11,347](main.py:49)DEBUG: start
+[2016-06-25 17:12:11,349](handler.py:17)DEBUG: NewConnectionCallback connection from:('127.0.0.1', 6379)
+[2016-06-25 17:12:11,350](handler.py:9)DEBUG: OnConnectCallback connection from:('127.0.0.1', 6379)
+[2016-06-25 17:12:11,350](connection.py:124)INFO: recv 23
+[2016-06-25 17:12:11,351](protocol.py:64)INFO: bertyoung
+[2016-06-25 17:12:11,351](protocol.py:64)INFO: 21
+[2016-06-25 17:12:11,351](connection.py:124)INFO: recv 5
+[2016-06-25 17:12:11,352](protocol.py:64)INFO: OK
+[2016-06-25 17:12:11,352](connection.py:124)INFO: recv 25
+[2016-06-25 17:12:11,352](protocol.py:64)INFO: fuck you maozedong

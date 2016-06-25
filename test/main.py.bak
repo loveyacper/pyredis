@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+
+import signal
+import sys
+
+from base.ioloop import IOLoop
+from base.acceptor import Acceptor
+from base.connector import Connector
+from redisc.protocol import Protocol
+
+
+def pingHandler(mvdata):
+    return "*1\r\n$4\r\npong\r\n"
+
+def getHandler(mvdata):
+    return "*1\r\n$4\r\nbert\r\n"
+
+handlers = {'ping' : pingHandler, 'get' : getHandler }
+
+
+def signalHandler(signal, frame):
+    print("\r\nExiting\r\n")
+    sys.exit(0)
+
+loop = None
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signalHandler)
+
+    import logging
+    import logging.config
+
+    mylog = logging.getLogger("redis_client")
+    try:
+        logging.config.fileConfig('conf/logging.conf')
+    except Exception as e: 
+        logging.basicConfig(filename='redis_client.log', level=logging.DEBUG, format='[%(asctime)s]%(levelname)s: %(message)s')
+
+    from base.handler import  MessageCallback, OnConnectCallback, OnDisConnectCallback, NewConnectionCallback
+    from base.gen import coroutine
+    from base.future import Future, is_future
+    '''
+    the common async request function, send request and return future
+    ''' 
+    def flat(nest): 
+        try: 
+            for sublist in nest: 
+                if isinstance(sublist, str): 
+                    yield sublist
+                else:
+                    for elem in flat(sublist):
+                        yield elem 
+        except TypeError: 
+            yield nest
+
+    def AsyncRequest(conn, params):
+
+        req = ""
+        bulks = 0
+        for pa in flat(params):
+            req += '''${0}\r\n{1}\r\n'''.format(len(pa), pa)
+            bulks += 1
+
+        mbulk = '''*{0}\r\n'''.format(bulks)
+
+        #print("send req \n" + mbulk + req)
+
+        if not conn.send(mbulk + req):
+            return base.gen._null_future
+        else:
+            # add new future to conn's pending list
+            fut = Future()
+            conn.appendFuture(fut)
+            return fut
+
+    def get(conn, key):
+        return AsyncRequest(conn, ("get", key))
+
+    def hmget(conn, key, args):
+        return AsyncRequest(conn, ("hmget", key, args))
+
+    def keys(conn, pattern):
+        return AsyncRequest(conn, ("keys", pattern))
+
+    # sample function, get
+    @coroutine
+    def myget(conn, key):
+        resp = yield get(conn, key)
+        print(key + "] got resp from coroutine " + str(resp))
+        raise Return(resp)
+        # logic_process with resp
+
+    @coroutine
+    def myhmget(conn, key, *attrs):
+        resp = yield hmget(conn, key, attrs)
+        print(key+ "] got resp from coroutine " + str(resp))
+        # logic_process with resp
+
+    @coroutine
+    def mykeys(conn, pattern):
+        resp = yield keys(conn, pattern)
+        print(pattern + "] got resp from coroutine " + str(resp))
+
+    class MsgHandler(MessageCallback):
+        def __init__(self):
+            self.parser = Protocol()
+
+        def __call__(self, conn, mv):
+            parser = self.parser
+            parser.parse(mv)
+            consumed = 0
+            if parser.ready():
+                parser.debug()
+                params = parser.params()
+
+                conn.resolveAndPopFuture(list(params))
+
+                consumed = parser.consumed()
+                parser.reset()
+                '''
+                hdl = handlers.get(params[0])
+                if hdl:
+                    response = hdl(mv)
+                    conn.send(response)
+                '''
+
+            else:
+                #mylog.debug("recv data " + str(mv.tobytes()))
+                mylog.debug("not complete protocol recv, please wait")
+
+            return consumed
+
+    class ConnectHandler(OnConnectCallback):
+        def __call__(self, conn):
+            raise RuntimeError("not here")
+            OnConnectCallback.__call__(self, conn)
+            myget(conn, "name")
+            myget(conn, "age")
+            myhmget(conn, "profile", "city", "age", "name")
+            mykeys(conn, "p*")
+            #IOLoop.current()._sched.enter(delay = 2.1, count = -1, action = lambda conn : conn.send("*1\r\n$4\r\nping\r\n"), argument = [conn])
+
+
+    class DisConnectHandler(OnDisConnectCallback):
+        def __call__(self, conn):
+            OnDisConnectCallback.__call__(self, conn)
+
+    class NewConnHandler(NewConnectionCallback):
+        def __call__(self, conn):
+            NewConnectionCallback.__call__(self, conn)
+            conn.setMsgCallback(MsgHandler())
+            conn.setOnConnectCallback(ConnectHandler())
+            conn.setOnDisconnectCallback(DisConnectHandler())
+
+
+    ''' main loop '''
+    loop = IOLoop()
+
+    @coroutine
+    def async_connect(port = 6379):
+        connector = Connector(loop = loop)
+        redis = yield connector.connect(port)
+
+        redis.setMsgCallback(MsgHandler())
+        print("async connect success!!!" + str(redis))
+
+        name, age = yield [get(redis, "name"), get(redis, "age")]
+        print("got name " + str(name) + ", and age " + str(age))
+    #connector = Connector(loop = loop)
+    #connector.setNewConnCallback(NewConnHandler())
+    #connector.connect(port = 6379)
+
+    # start main loop
+    async_connect()
+    mylog.debug("start")
+
+    loop.start()
