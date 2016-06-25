@@ -32,16 +32,18 @@ if __name__ == "__main__":
 
     @coroutine
     def sample_redis_client(port = 6379):
-        redis = yield RedisClientPool.getConn(port = port)
+        from redisc.redisclient import MsgHandler, getConn, get, set
+
+        redis = yield getConn(port = port)
         from redisc.redisclient import MsgHandler
         redis.setMsgCallback(MsgHandler())
         print("async connect success!!!" + str(redis))
 
-        name, age = yield [RedisClientPool.get(redis, "name"), RedisClientPool.get(redis, "age")]
+        name, age = yield [get(redis, "name"), get(redis, "age")]
         print("got name " + str(name) + ", and age " + str(age))
 
-        yield RedisClientPool.set(redis, "slogan", "fuck you maozedong")
-        slogan = yield RedisClientPool.get(redis, "slogan")
+        yield set(redis, "slogan", "fuck you maozedong")
+        slogan = yield get(redis, "slogan")
         print("got slogan" + str(slogan))
 
     # start main loop

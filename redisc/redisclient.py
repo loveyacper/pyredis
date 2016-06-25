@@ -29,58 +29,53 @@ class MsgHandler(MessageCallback):
 
 
 class RedisClientPool:
+    ''' TODO '''
     def __init__(self):
         pass
 
-    @staticmethod
-    def getConn(port, ip = "127.0.0.1"):
-        ''' TODO connection pool '''
-        ctor = Connector(loop = IOLoop.current())
-        return ctor.connect(ip = ip, port = port)
 
-    @staticmethod
-    def _flat(nest): 
-        try: 
-            for sublist in nest: 
-                if isinstance(sublist, str): 
-                    yield sublist
-                else:
-                    for elem in flat(sublist):
-                        yield elem 
-        except TypeError: 
-            yield nest
+def getConn(port, ip = "127.0.0.1"):
+    ''' TODO connection pool '''
+    ctor = Connector(loop = IOLoop.current())
+    return ctor.connect(ip = ip, port = port)
 
-    @staticmethod
-    def async_request(conn, params):
-        req = ""
-        bulks = 0
-        for pa in RedisClientPool._flat(params):
-            req += '''${0}\r\n{1}\r\n'''.format(len(pa), pa)
-            bulks += 1
+def _flat(nest): 
+    try: 
+        for sublist in nest: 
+            if isinstance(sublist, str): 
+                yield sublist
+            else:
+                for elem in flat(sublist):
+                    yield elem 
+    except TypeError: 
+        yield nest
 
-        mbulk = '''*{0}\r\n'''.format(bulks)
+def async_request(conn, params):
+    req = ""
+    bulks = 0
+    for pa in _flat(params):
+        req += '''${0}\r\n{1}\r\n'''.format(len(pa), pa)
+        bulks += 1
 
-        #print("send req \n" + mbulk + req)
+    mbulk = '''*{0}\r\n'''.format(bulks)
 
-        if not conn.send(mbulk + req):
-            return base.gen._null_future
-        else:
-            return conn.newFuture()
+    #print("send req \n" + mbulk + req)
 
-    # the redis command
-    @staticmethod
-    def get(conn, key):
-        return RedisClientPool.async_request(conn, ("get", key))
+    if not conn.send(mbulk + req):
+        return base.gen._null_future
+    else:
+        return conn.newFuture()
 
-    @staticmethod
-    def set(conn, key, value):
-        return RedisClientPool.async_request(conn, ("set", key, value))
+# the redis command
+def get(conn, key):
+    return async_request(conn, ("get", key))
 
-    @staticmethod
-    def hmget(conn, key, args):
-        return RedisClientPool.async_request(conn, ("hmget", key, args))
+def set(conn, key, value):
+    return async_request(conn, ("set", key, value))
 
-    @staticmethod
-    def keys(conn, pattern):
-        return RedisClientPool.async_request(conn, ("keys", pattern))
+def hmget(conn, key, args):
+    return async_request(conn, ("hmget", key, args))
+
+def keys(conn, pattern):
+    return async_request(conn, ("keys", pattern))
 
