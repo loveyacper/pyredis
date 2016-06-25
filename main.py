@@ -32,11 +32,9 @@ if __name__ == "__main__":
 
     @coroutine
     def sample_redis_client(port = 6379):
-        from redisc.redisclient import MsgHandler, getConn, get, set
+        from redisc.redisclient import getConn, get, set
 
         redis = yield getConn(port = port)
-        from redisc.redisclient import MsgHandler
-        redis.setMsgCallback(MsgHandler())
         print("async connect success!!!" + str(redis))
 
         name, age = yield [get(redis, "name"), get(redis, "age")]

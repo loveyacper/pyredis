@@ -12,9 +12,6 @@ def sample_redis_client(port = 6379):
     # get connection, may from pool, may async connect to redis, whatever
     redis = yield getConn(port = port)
 
-    # set the protocol parser
-    redis.setMsgCallback(MsgHandler())
-
     # get remote slogon from redis, yield looks like await keyword
     slogan = yield get(redis, "slogan")
 

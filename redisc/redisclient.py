@@ -3,7 +3,7 @@ from base.ioloop import IOLoop
 from base.connector import Connector
 from protocol import Protocol
 
-from base.handler import  MessageCallback
+from base.handler import  MessageCallback, NewConnectionCallback
 
 class MsgHandler(MessageCallback):
     def __init__(self):
@@ -33,10 +33,15 @@ class RedisClientPool:
     def __init__(self):
         pass
 
+class NewConnHandler(NewConnectionCallback):
+    def __call__(self, conn):
+        NewConnectionCallback.__call__(self, conn)
+        conn.setMsgCallback(MsgHandler())
 
 def getConn(port, ip = "127.0.0.1"):
     ''' TODO connection pool '''
     ctor = Connector(loop = IOLoop.current())
+    ctor.setNewConnCallback(NewConnHandler())
     return ctor.connect(ip = ip, port = port)
 
 def _flat(nest): 
