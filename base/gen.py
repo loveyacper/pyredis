@@ -137,7 +137,7 @@ def _make_coroutine_wrapper(func, replace_cb = True):
                     print("got StopIteration or Return")
                     future.set_result(_value_from_stopiteration(e)) # generator is over
                 except Exception: # other exception, error happened
-                    print("got Exception")
+                    print("got Exception" + str(sys.exc_info()))
                     future.set_exc_info(sys.exc_info()) # generator is over
                 else:
                     print("enter Runner")

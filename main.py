@@ -4,7 +4,7 @@ import signal
 import sys
 
 from base.ioloop import IOLoop
-from redisc.redisclient import RedisClientPool
+from redisc.redisclient import RedisPool
 
 
 def signalHandler(signal, frame):
@@ -30,22 +30,51 @@ if __name__ == "__main__":
     ''' main loop '''
     loop = IOLoop()
 
-    @coroutine
-    def sample_redis_client(port = 6379):
-        from redisc.redisclient import getConn, get, set
+    from redisc.redisclient import RedisPool
+    pool = RedisPool()
 
-        redis = yield getConn(port = port)
+    # async
+    @coroutine
+    def example1(port = 6379):
+
+        redis = yield pool.getConn(port = port) # await
         print("async connect success!!!" + str(redis))
 
-        name, age = yield [get(redis, "name"), get(redis, "age")]
+        name, age = yield [redis.get("name"), redis.get("age")]
         print("got name " + str(name) + ", and age " + str(age))
 
-        yield set(redis, "slogan", "fuck you maozedong")
-        slogan = yield get(redis, "slogan")
+        yield redis.set("slogan", "we'll rock you")
+        slogan = yield redis.get("slogan")
         print("got slogan" + str(slogan))
 
+        pool.freeConn(redis)
+        loop.call_later(2, example2)
+
+    @coroutine
+    def example2(port = 6379):
+        redis = yield pool.getConn(port = port)
+
+        multi = yield redis.multi()
+        print("multi result " + str(multi))
+        yield redis.multi()
+
+        res = yield redis.get("name")
+        print("expect queued " + str(res))
+
+        res = yield redis.set("slogan", "we'll rock you2")
+        print("expect queued " + str(res))
+
+        #res = yield redis.discard()
+        #print("expect OK" + str(res))
+
+        results = yield redis.execute()
+        print("multi results " + str(results))
+
+        pool.freeConn(redis)
+
     # start main loop
-    sample_redis_client()
+    example1()
     mylog.debug("start")
 
     loop.start()
+

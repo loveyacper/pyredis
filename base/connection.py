@@ -26,6 +26,10 @@ class Connection:
     def __str__(self):
         return "connection from:" + str(self.__peeraddr)
 
+    @property
+    def peerAddr(self):
+        return str(self.__peeraddr)
+
     def setMsgCallback(self, callback):
         self.__msgCallback = callback
 

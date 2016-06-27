@@ -56,8 +56,8 @@ class Connector:
         except socket.error as serr: 
             if serr.errno != os.errno.EINPROGRESS and serr.errno != os.errno.EWOULDBLOCK:
                 logging.exception("connect error is not EINPROGRESS: %s", str(serr.errno))
-                self.close()
                 self.__future.set_exception(ConnectError(str(serr.errno)))
+                self.close()
                 return self.__future
             else:
                 self.__state = Connector.CONNECTING
@@ -86,6 +86,7 @@ class Connector:
         self.__state = Connector.NONE
 
     def onError(self):
+        self.__future.set_exception(ConnectError())
         self.close()
 
     def onReadable(self):
